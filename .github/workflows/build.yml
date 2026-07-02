@@ -44,7 +44,12 @@ jobs:
           npx cap sync android
           cd android
           chmod +x gradlew
-          if [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+          # workflow_dispatch 用 debug（无需签名），push 用 release
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Building DEBUG APK (no signing needed)..."
+            ./gradlew assembleDebug --no-daemon
+            echo "APK_PATH=app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
             ./gradlew assembleDebug --no-daemon
             echo "APK_PATH=app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_ENV
           else
@@ -56,7 +61,8 @@ jobs:
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SillyTavern-Notif
+          path: android/${{ env.APK_PATH }}
